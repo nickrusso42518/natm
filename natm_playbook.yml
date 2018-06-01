@@ -1,0 +1,233 @@
+---
+- name: "Perform control machine setup"
+  hosts: localhost
+  tasks:
+    - name: "BLOCK >> Perform logging preparation"
+      block:
+        - name: "LOG >> Get ansible date/time facts"
+          setup:
+            filter: "ansible_date_time"
+            gather_subset: "!all"
+
+        - name: "LOG >> Store DTG as fact"
+          set_fact:
+            DTG: "{{ ansible_date_time.iso8601_basic_short }}"
+
+        - name: "LOG >> Ensure output logging directory exists"
+          file:
+            path: "logs"
+            state: directory
+          changed_when: false
+
+        - name: "LOG >> Store the log directory for this run"
+          set_fact:
+            LOG_PATH: "logs/natm_{{ DTG }}/"
+
+        - name: "LOG >> Build logging directory with path {{ LOG_PATH }}"
+          file:
+            path: "{{ LOG_PATH }}"
+            state: directory
+          changed_when: false
+      when: "log"
+
+# This playbook is used primarily for CMNT integration to include units that
+# do not have public CMNT IP space, and require NAT for IPsec NAT-T to
+# function with CMNT headend HAIPEs.
+- name: "Manage IOS NAT statements"
+  hosts: nat_routers
+  vars_files:
+    - "login_creds.vault"
+
+  # Perform some preliminary error checking on the static_nats list to
+  # ensure it is defined and non-empty. Perform the same checks on the vrf
+  # string.
+  tasks:
+    - name: "SYS >> Assert 'static_nats' var is defined"
+      assert:
+        that:
+          - "static_nats is defined"
+          - "static_nats"
+          - "vrf is defined"
+          - "vrf == true or vrf == false"
+        msg: "'static_nats' and 'vrf' must be defined per host"
+
+    # Compute the VRF command string by prepending the word vrf to
+    # simplify the templates variable references.
+    - name: "SYS >> Determine VRF string"
+      set_fact:
+        VRF_STR: "{{ ' vrf {0}'.format(vrf.strip()) if vrf else '' }}"
+
+    # Print the VRF string to ensure it was assembled correctly.
+    - name: "DEBUG >> Print VRF string"
+      debug:
+        var: VRF_STR
+        verbosity: 1
+
+    # Each NAT entry must have a valid name (a non-empty string), a state
+    # value of either present or absent, and a valid IPv4 address for both
+    # the inside (private) and outside (public) addresses. Neither can be
+    # in CIDR format.
+    - name: "SYS >> Assert NAT IPs, name, and state are valid"
+      assert:
+        that:
+          - "item.name"
+          - "item.state == 'present' or item.state == 'absent'"
+          - "item.inside_private | ipv4 == item.inside_private"
+          - "item.outside_public | ipv4 == item.outside_public"
+          - "not '/' in item.inside_private"
+          - "not '/' in item.outside_public"
+        msg: |-
+          name must be a non-empty string; saw {{ item.name }}
+          state must be 'present' or 'absent'; saw {{ item.state }}
+          inside_private must be IPv4 address; saw {{ item.inside_private }}
+          outside_public must be IPv4 address; saw {{ item.outside_public }}
+      with_items: "{{ static_nats }}"
+      loop_control:
+        label: >-
+          NAT Entry {{ item.name }}:
+          {{ item.inside_private }}->{{ item.outside_public }}
+
+    # Create a list of all names and inside/outside IPs for future
+    # iteration.
+    - name: "SYS >> Create lists of IPs and names"
+      set_fact:
+        NAME_LIST: "{{ static_nats | map(attribute='name') | list }}"
+        IN_LIST: "{{ static_nats | map(attribute='inside_private') | list }}"
+        OUT_LIST: "{{ static_nats | map(attribute='outside_public') | list }}"
+
+    # Print out the list of names when -v debugging is enabled.
+    - name: "DEBUG >> Print name list"
+      debug:
+        msg: "{{ NAME_LIST }}"
+        verbosity: 1
+
+    # Print out the list of inside private IPs  when -v debugging is enabled.
+    - name: "DEBUG >> Print inside private list"
+      debug:
+        msg: "{{ IN_LIST }}"
+        verbosity: 1
+
+    # Print out the list of outside public IPs when -v debugging is enabled.
+    - name: "DEBUG >> Print outside public list"
+      debug:
+        msg: "{{ OUT_LIST }}"
+        verbosity: 1
+
+    # Ensure each list contains no duplicates as this will have drastic
+    # negative effects on the functionality of NAT in Cisco IOS.
+    - name: "SYS >> Check for duplicate IPs or names across NAT entries"
+      assert:
+        that:
+          - "NAME_LIST | length == NAME_LIST | unique | length"
+          - "IN_LIST | length == IN_LIST | unique | length"
+          - "OUT_LIST | length == OUT_LIST | unique | length"
+        msg: "Duplicate inputs exist in vars file, reconcile before continuing"
+
+    # Ask the router what NAT statements are already configured and store them
+    # in a list of current NATs.
+    - name: "IOS >> Get current NAT statements"
+      ios_command:
+        provider: "{{ login_creds }}"
+        commands: "show running-config | include ^ip nat name .*"
+      register: CUR_NATS
+
+    # Print the output of the current NATs for debugging, but it will be
+    # ugly and hard to read.
+    - name: "DEBUG >> Print current NAT statements"
+      debug:
+        msg: "{{ CUR_NATS.stdout[0] }}"
+        verbosity: 1
+
+    # The 'nat' template has the intelligence to determine when changes need
+    # to be made to the router. Toggle the 'save_when' key between never
+    # and always depending on if the NATs should be saved in the configured.
+    #
+    # Notify the "updates exist" handlers when changes occur.
+    - name: "IOS >> Manage state NAT statements"
+      ios_config:
+        provider: "{{ login_creds }}"
+        src: "templates/nat.j2"
+        save_when: never
+        # save_when: always
+        match: none
+      register: NAT_CONFIG
+      changed_when: "NAT_CONFIG.updates is defined"
+      notify: "updates exist"
+
+    # Get the NAT table to determine if the configuration was successful and
+    # the router installed state entries appropriately. Relying only on the
+    # configuration is not wise, so this extra verification ensures quality.
+    - name: "IOS >> Get NAT translation table"
+      ios_command:
+        provider: "{{ login_creds }}"
+        commands: "show ip nat translations{{ VRF_STR }}"
+      register: NAT_TABLE
+
+    # Print the table to stdout in raw format for troubleshooting
+    - name: "DEBUG >> Print NAT translation table"
+      debug:
+        msg: "{{ NAT_TABLE.stdout[0] }}"
+        verbosity: 1
+
+    # Entries that are supposed to be present, per the state selector,
+    # must be present at this point. If they are not, the task fails.
+    - name: "SYS >> Verify present entries are present"
+      assert:
+        that:
+          - "item.inside_private in NAT_TABLE.stdout[0]"
+          - "item.outside_public in NAT_TABLE.stdout[0]"
+        msg: |-
+          NAT entry {{ item.inside_private }},{{ item.outside_public }}
+          with name {{ item.name }} not found when state was 'present'
+      when: "item.state == 'present'"
+      with_items: "{{ static_nats }}"
+      loop_control:
+        label: >-
+          Present? {{ item.name }}:
+          {{ item.inside_private }}->{{ item.outside_public }}
+
+    # Entries that are supposed to be absent, per the state selector,
+    # must be absent at this point. If they are not, the task fails.
+    - name: "SYS >> Verify absent entries are absent"
+      assert:
+        that:
+          - "not item.inside_private in NAT_TABLE.stdout[0]"
+          - "not item.outside_public in NAT_TABLE.stdout[0]"
+        msg: |-
+          NAT entry {{ item.inside_private }},{{ item.outside_public }}
+          with name {{ item.name }} found when state was 'absent'
+      when: "item.state == 'absent'"
+      with_items: "{{ static_nats }}"
+      loop_control:
+        label: >-
+          Absent? {{ item.name }}:
+          {{ item.inside_private }}->{{ item.outside_public }}
+
+  # If these handlers are invoked, it means that changes to the state
+  # table occurred, and these changes should be appropriately logged.
+  handlers:
+
+    # Referencing long variable names makes everything more complicated,
+    # so it is worth the memory tax to copy these into each host.
+    - name: "SYS >> Copy the vars to each host to simplify playbook"
+      listen: "updates exist"
+      set_fact:
+        LOG_PATH: "{{ hostvars.localhost.LOG_PATH }}"
+        DTG: "{{ hostvars.localhost.DTG }}"
+
+    # The updates will be assembled into one text blob using newlines
+    # and written to the screen for interested users.
+    - name: "LOG >> Print updates written to device to stdout"
+      listen: "updates exist"
+      debug:
+        msg: "{{ NAT_CONFIG.updates | join('\n') }}"
+
+    # Next, the updates are templated through the 'natlog' template for
+    # longer term storage and reference for troubleshooting.
+    - name: "LOG >> Print updates written to device to log file"
+      listen: "updates exist"
+      template:
+        src: "templates/natlog.j2"
+        dest: "{{ LOG_PATH }}{{ inventory_hostname}}_{{ DTG }}.txt"
+        newline_sequence: "\r\n"
+...

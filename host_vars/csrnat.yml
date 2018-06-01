@@ -1,0 +1,16 @@
+---
+vrf: false
+static_nats:
+  - name: "TEST_1"
+    state: "absent"
+    inside_private: "192.168.0.1"
+    outside_public: "100.64.0.1"
+  - name: "TEST_2"
+    state: "absent"
+    inside_private: "192.168.0.2"
+    outside_public: "100.64.0.2"
+  - name: "TEST_3"
+    state: "absent"
+    inside_private: "192.168.0.3"
+    outside_public: "100.64.0.3"
+...

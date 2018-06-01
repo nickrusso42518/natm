@@ -1,0 +1,7 @@
+! BEGIN {{ inventory_hostname }} @ {{ DTG }}
+! Updates:
+{% for item in NAT_CONFIG.updates -%}
+{{ item }}
+{% endfor %}
+!
+! END   {{ inventory_hostname }} @ {{ DTG }}
