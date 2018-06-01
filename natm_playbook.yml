@@ -228,6 +228,6 @@
       listen: "updates exist"
       template:
         src: "templates/natlog.j2"
-        dest: "{{ LOG_PATH }}{{ inventory_hostname}}_{{ DTG }}.txt"
+        dest: "{{ LOG_PATH }}{{ inventory_hostname}}.txt"
         newline_sequence: "\r\n"
 ...

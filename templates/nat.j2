@@ -1,9 +1,9 @@
 {% for n in static_nats -%}
 {% set nat_cmd_prefix = 'ip nat name ' ~ n.name %}
-{# When state is present, need to NOT add NATs already configured #}
+{# WHEN STATE IS PRESENT, NEED TO NOT ADD NATS ALREADY CONFIGURED #}
 {% if n.state == 'present' and nat_cmd_prefix not in CUR_NATS.stdout[0] %}
 {{ nat_cmd_prefix }} inside source static {{ n.inside_private }} {{ n.outside_public }}{{ VRF_STR }}
-{# When state is absent, need to ONLY remove NATs already configured #}
+{# WHEN STATE IS ABSENT, NEED TO ONLY REMOVE NATS ALREADY CONFIGURED #}
 {% elif n.state == 'absent' and nat_cmd_prefix in CUR_NATS.stdout[0] %}
 no {{ nat_cmd_prefix }}
 {% endif %}

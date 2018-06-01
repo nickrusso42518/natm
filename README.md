@@ -3,9 +3,24 @@ This playbook automatically manages 1:1 static NAT statements
 within a specified VRF on Cisco IOS routers. This is a particularly
 labor-intensive and error-prone task, and this playbook
 ensures that the desired state of the NAT table is applied.
-Non-VRF (global table) operations are also supported. 
+Non-VRF (global table) operations are also supported.
 
-## Hosts
+> Contact information:
+> Email:    njrusmc@gmail.com
+> Twitter:  @nickrusso42518
+
+  * [Supported platforms](#supported-platforms)
+  * [Variables](#variables)
+  * [Templates](#templates)
+  * [Handlers](#handlers)
+
+## Supported platforms
+Cisco IOS routers are supported today. Any router that is running NAT and
+could benefit by having automated management of the NAT statements is a good
+candidate.
+
+Testing was conducted on the following platforms and versions:
+  * Cisco CSR1000v, version 16.07.01a, running in AWS
 
 ## Variables
 These playbooks rely only on `host_vars` which are defined for each router
@@ -76,13 +91,9 @@ A second template is for logging. Since this playbook is idempotent, logging
 changes is useful to identify what changed, when, and on which device. When
 changes occur, the task that manages the NAT configurations shows "changed"
 and thus can notify handlers. These log messages are printed to stdout
-and to a log file in the format `natlog_hostname_DTG.txt`. For example,
-`natlog_csrnat_20180115T183845.txt`. Liberal use of the Linux `cat`
-command can be useful to view the chronology for a given device or
-specific point in time:
-
-  * `cat logs/natlog_csrnat*`
-  * `cat logs/*20180115T183845.txt`
+and to a log file in the format `hostname_DTG.txt` in the `LOG_PATH`
+variable computed by the control machine earlier in the playbook.
+For example: `csrnat_20180115T183845.txt`.
 
 The network device hostname and DTG are also written in the text of the
 log to make it easy to bookmark certain events during concatenation.
@@ -90,23 +101,25 @@ The output below illustrates the use of `cat` and the value of
 these text labels.
 
 ```
-[some_user@localhost nat]$ cat logs/natlog_RHN5_PER*
-! BEGIN RHN5_PER @ 20180117T023545
+[ec2-user@ansible natm]$ tree logs/
+logs/
+├── natm_20180601T115455
+│   └── csrnat.txt
+└── natm_20180601T115632
+    └── csrnat.txt
+
+[ec2-user@ansible natm]$ cat \
+> logs/natm_20180601T115455/csrnat.txt \
+> logs/natm_20180601T115632/csrnat.txt
+! BEGIN csrnat @ 20180601T115455
 ! Updates:
-no ip nat name TEST_129
-no ip nat name TEST_131
+ip nat name TEST_1 inside source static 192.168.0.1 100.64.0.1
+ip nat name TEST_3 inside source static 192.168.0.3 100.64.0.3
 !
-! END   RHN5_PER @ 20180117T023545
-! BEGIN RHN5_PER @ 20180117T024315
+! END   csrnat @ 20180601T115455
+! BEGIN csrnat @ 20180601T115632
 ! Updates:
-ip nat name TEST_130 inside source static 192.168.0.130 100.64.0.130 vrf TEST
-ip nat name TEST_131 inside source static 192.168.0.131 100.64.0.131 vrf TEST
+no ip nat name TEST_1
 !
-! END   RHN5_PER @ 20180117T024315
-! BEGIN RHN5_PER @ 20180117T024519
-! Updates:
-no ip nat name TEST_130
-no ip nat name TEST_131
-!
-! END   RHN5_PER @ 20180117T024519
+! END   csrnat @ 20180601T115632
 ```
