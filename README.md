@@ -9,8 +9,8 @@ labor-intensive and error-prone task, and this playbook
 ensures that the desired state of the NAT table is applied.
 Non-VRF (global table) operations are also supported.
 
-> Contact information:
-> Email:    njrusmc@gmail.com
+> Contact information:\
+> Email:    njrusmc@gmail.com\
 > Twitter:  @nickrusso42518
 
   * [Supported platforms](#supported-platforms)
