@@ -77,6 +77,8 @@ data for local testing only (`true`). Mock data files can be found in
 ```
 ---
 vrf: "TEST"
+ci_test: false
+vrf: false
 static_nats:
   - name: "TEST_1"
     state: "present"
