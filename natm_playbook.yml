@@ -2,27 +2,33 @@
 - name: "Perform control machine setup"
   hosts: localhost
   tasks:
+    # When 'log' is true, execute the log preparation
     - name: "BLOCK >> Perform logging preparation"
       block:
+        # Get the date/time facts from the control machine
         - name: "LOG >> Get ansible date/time facts"
           setup:
             filter: "ansible_date_time"
             gather_subset: "!all"
 
+        # Store the specific ISO8601 DTG as a fact to use later
         - name: "LOG >> Store DTG as fact"
           set_fact:
             DTG: "{{ ansible_date_time.iso8601_basic_short }}"
 
+        # The logs/ directory is where all device output is written
         - name: "LOG >> Ensure output logging directory exists"
           file:
             path: "logs"
             state: directory
           changed_when: false
 
+        # Each specific playbook execution gets a log folder; define the path
         - name: "LOG >> Store the log directory for this run"
           set_fact:
             LOG_PATH: "logs/natm_{{ DTG }}/"
 
+        # Based on the path defined above, create the per-run log directory
         - name: "LOG >> Build logging directory with path {{ LOG_PATH }}"
           file:
             path: "{{ LOG_PATH }}"
@@ -30,9 +36,8 @@
           changed_when: false
       when: "log"
 
-# This playbook is used primarily for CMNT integration to include units that
-# do not have public CMNT IP space, and require NAT for IPsec NAT-T to
-# function with CMNT headend HAIPEs.
+# This play encompasses all NAT routers and makes changes to the NAT config
+# on each device (assumine ci_test is false).
 - name: "Manage IOS NAT statements"
   hosts: nat_routers
   vars_files:
@@ -123,45 +128,17 @@
           - "OUT_LIST | length == OUT_LIST | unique | length"
         msg: "Duplicate inputs exist in vars file, reconcile before continuing"
 
-    # Ask the router what NAT statements are already configured and store them
-    # in a list of current NATs.
-    - name: "IOS >> Get current NAT statements"
-      ios_command:
-        provider: "{{ login_creds }}"
-        commands: "show running-config | include ^ip nat name .*"
-      register: CUR_NATS
+    # When CI testing is false (the general case), then log into the routers,
+    # collect their NAT information, and make appropriate updates.
+    - name: "INCLUDE >> Manage NAT statements on router"
+      include_tasks: "tasks/manage_nat.yml"
+      when: "not ci_test"
 
-    # Print the output of the current NATs for debugging, but it will be
-    # ugly and hard to read.
-    - name: "DEBUG >> Print current NAT statements"
-      debug:
-        msg: "{{ CUR_NATS.stdout[0] }}"
-        verbosity: 1
-
-    # The 'nat' template has the intelligence to determine when changes need
-    # to be made to the router. Toggle the 'save_when' key between never
-    # and always depending on if the NATs should be saved in the configured.
-    #
-    # Notify the "updates exist" handlers when changes occur.
-    - name: "IOS >> Manage state NAT statements"
-      ios_config:
-        provider: "{{ login_creds }}"
-        src: "templates/nat.j2"
-        save_when: never
-        # save_when: always
-        match: none
-      register: NAT_CONFIG
-      changed_when: "NAT_CONFIG.updates is defined"
-      notify: "updates exist"
-
-    # Get the NAT table to determine if the configuration was successful and
-    # the router installed state entries appropriately. Relying only on the
-    # configuration is not wise, so this extra verification ensures quality.
-    - name: "IOS >> Get NAT translation table"
-      ios_command:
-        provider: "{{ login_creds }}"
-        commands: "show ip nat translations{{ VRF_STR }}"
-      register: NAT_TABLE
+    # When CI testing is true, mock up a NAT table for checking later in the
+    # playbook based on what is specified in the group/host variables file.
+    - name: "INCLUDE >> Generate mock data for CI testing"
+      include_tasks: "tasks/mock_{{ inventory_hostname }}.yml"
+      when: "ci_test"
 
     # Print the table to stdout in raw format for troubleshooting
     - name: "DEBUG >> Print NAT translation table"

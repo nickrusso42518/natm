@@ -1,0 +1,16 @@
+---
+# Create a mock NAT_TABLE variables that looks as if it came from the router.
+# In this particular table, TEST_1 and TEST_3 are present and TEST2 is absent,
+# which is expected per the standard inventory file. This data can be
+# referenced using NAT_TABLE.stdout[0] just like a "real" output variable.
+- name: "SYS >> Generate mock NAT_TABLE variable representing router output"
+  set_fact:
+    NAT_TABLE:
+      stdout:
+        - |
+          Pro  Inside global   Inside local   Outside local   Outside global
+          ---  100.64.0.3      192.168.0.3    ---             ---
+          ---  100.64.0.1      192.168.0.1    ---             ---
+          ---  100.64.0.4      192.168.0.4    ---             ---
+          Total number of translations: 2
+...

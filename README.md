@@ -67,6 +67,13 @@ If there are multiple VRFs with multiple NATs per VRF, simply create
 additional variables files and run the playbook again. Below is an example of
 a `host_vars` file.
 
+Two other minor variables are also defined. `save_when` is just a wrapper for
+the `ios_command` option that determines when to save configuration changes.
+`ci_test` is a true/false variable that specifies when a host should actually
+log into routers and manage NAT statements (`false`) or should use mocked
+data for local testing only (`true`). Mock data files can be found in
+`tasks/mock_<hostname>.yml`.
+
 ```
 ---
 vrf: "TEST"

@@ -1,4 +1,6 @@
 ---
+save_when: "never"
+ci_test: false
 vrf: false
 static_nats:
   - name: "TEST_1"
