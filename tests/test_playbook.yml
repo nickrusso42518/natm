@@ -7,4 +7,5 @@
 - import_playbook: "../natm_playbook.yml"
   vars:
     ci_test: true
+    ansible_connection: "local"
 ...

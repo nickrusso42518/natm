@@ -3,7 +3,6 @@
 # in a list of current NATs.
 - name: "IOS >> Get current NAT statements"
   ios_command:
-    provider: "{{ login_creds }}"
     commands: "show running-config | include ^ip nat name .*"
   register: CUR_NATS
 
@@ -22,7 +21,6 @@
 # Notify the "updates exist" handlers when changes occur.
 - name: "IOS >> Manage state NAT statements (save_when: {{ save_when }})"
   ios_config:
-    provider: "{{ login_creds }}"
     src: "../templates/nat.j2"
     save_when: "{{ save_when }}"
     match: none
@@ -37,7 +35,6 @@
 # validation checking.
 - name: "IOS >> Get NAT translation table"
   ios_command:
-    provider: "{{ login_creds }}"
     commands: "show ip nat translations{{ VRF_STR }}"
   register: NAT_TABLE
 ...

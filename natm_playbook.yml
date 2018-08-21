@@ -1,6 +1,7 @@
 ---
-- name: "Perform control machine setup"
-  hosts: localhost
+# This play encompasses all NAT routers and makes changes to the NAT config
+# on each device (assumine ci_test is false).
+- hosts: nat_routers
   tasks:
     # When 'log' is true, execute the log preparation
     - name: "BLOCK >> Perform logging preparation"
@@ -34,26 +35,19 @@
             path: "{{ LOG_PATH }}"
             state: directory
           changed_when: false
-      when: "log"
+      when: "hostvars.localhost.log"
+      run_once: true
+      delegate_to: localhost
 
-# This play encompasses all NAT routers and makes changes to the NAT config
-# on each device (assumine ci_test is false).
-- name: "Manage IOS NAT statements"
-  hosts: nat_routers
-  vars_files:
-    - "login_creds.vault"
-
-  # Perform some preliminary error checking on the static_nats list to
-  # ensure it is defined and non-empty. Perform the same checks on the vrf
-  # string.
-  tasks:
+    # Perform some preliminary error checking on the static_nats list to
+    # ensure it is defined and non-empty. Perform the same checks on the vrf
+    # string.
     - name: "SYS >> Assert 'static_nats' var is defined"
       assert:
         that:
           - "static_nats is defined"
           - "static_nats"
           - "vrf is defined"
-          - "vrf == true or vrf == false"
         msg: "'static_nats' and 'vrf' must be defined per host"
 
     # Compute the VRF command string by prepending the word vrf to
@@ -183,15 +177,6 @@
   # If these handlers are invoked, it means that changes to the state
   # table occurred, and these changes should be appropriately logged.
   handlers:
-
-    # Referencing long variable names makes everything more complicated,
-    # so it is worth the memory tax to copy these into each host.
-    - name: "SYS >> Copy the vars to each host to simplify playbook"
-      listen: "updates exist"
-      set_fact:
-        LOG_PATH: "{{ hostvars.localhost.LOG_PATH }}"
-        DTG: "{{ hostvars.localhost.DTG }}"
-
     # The updates will be assembled into one text blob using newlines
     # and written to the screen for interested users.
     - name: "LOG >> Print updates written to device to stdout"
@@ -206,5 +191,5 @@
       template:
         src: "templates/natlog.j2"
         dest: "{{ LOG_PATH }}{{ inventory_hostname}}.txt"
-        newline_sequence: "\r\n"
+        newline_sequence: '\r\n'
 ...
