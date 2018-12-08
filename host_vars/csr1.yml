@@ -1,0 +1,16 @@
+---
+save_when: "never"
+vrf: false
+static_nats:
+  - name: "TEST_1"
+    state: "present"
+    inside_private: "192.168.1.1"
+    outside_public: "100.64.1.1"
+  - name: "TEST_2"
+    state: "absent"
+    inside_private: "192.168.1.2"
+    outside_public: "100.64.1.2"
+  - name: "TEST_3"
+    state: "present"
+    inside_private: "192.168.1.3"
+    outside_public: "100.64.1.3"

@@ -1,4 +1,5 @@
 ---
+ci_test: false
 ansible_network_os: "ios"
 ansible_user: "ansible"
 ansible_ssh_pass: !vault |

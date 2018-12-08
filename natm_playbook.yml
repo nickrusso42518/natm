@@ -29,16 +29,9 @@
           set_fact:
             LOG_PATH: "logs/natm_{{ DTG }}/"
 
-        # Based on the path defined above, create the per-run log directory
-        - name: "LOG >> Build logging directory with path {{ LOG_PATH }}"
-          file:
-            path: "{{ LOG_PATH }}"
-            state: directory
-          changed_when: false
       when: "hostvars.localhost.log"
       run_once: true
       delegate_to: localhost
-
     # Perform some preliminary error checking on the static_nats list to
     # ensure it is defined and non-empty. Perform the same checks on the vrf
     # string.
@@ -184,12 +177,23 @@
       debug:
         msg: "{{ NAT_CONFIG.updates | join('\n') }}"
 
-    # Next, the updates are templated through the 'natlog' template for
-    # longer term storage and reference for troubleshooting.
-    - name: "LOG >> Print updates written to device to log file"
-      listen: "updates exist"
-      template:
-        src: "templates/natlog.j2"
-        dest: "{{ LOG_PATH }}{{ inventory_hostname}}.txt"
-        newline_sequence: '\r\n'
+    - name: "BLOCK >> Log changes to disk"
+      block:
+        # Based on the LOG_PATH variable, create the per-run log directory
+        - name: "LOG >> Build logging directory with path {{ LOG_PATH }}"
+          listen: "updates exist"
+          file:
+            path: "{{ LOG_PATH }}"
+            state: directory
+          changed_when: false
+
+        # Next, the updates are templated through the 'natlog' template for
+        # longer term storage and reference for troubleshooting.
+        - name: "LOG >> Print updates written to device to log file"
+          listen: "updates exist"
+          template:
+            src: "templates/natlog.j2"
+            dest: "{{ LOG_PATH }}{{ inventory_hostname }}.txt"
+            newline_sequence: '\r\n'
+      when: "hostvars.localhost.log"
 ...
