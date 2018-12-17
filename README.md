@@ -2,6 +2,10 @@
 https://travis-ci.org/nickrusso42518/natm.svg?branch=master)](
 https://travis-ci.org/nickrusso42518/natm)
 
+[![published](
+http://cs.co/codeex-badge)](
+https://developer.cisco.com/codeexchange/github/repo/nickrusso42518/natm)
+
 # Network Address Translation Manager (natm)
 This playbook automatically manages 1:1 static NAT statements
 within a specified VRF on Cisco IOS routers. This is a particularly
