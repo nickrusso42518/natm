@@ -1,119 +1,17 @@
 ---
 # This play encompasses all NAT routers and makes changes to the NAT config
 # on each device (assumine ci_test is false).
-- hosts: nat_routers
+- name: "Manage NAT configuration on nat_routers"
+  hosts: nat_routers
   tasks:
     # When 'log' is true, execute the log preparation
-    - name: "BLOCK >> Perform logging preparation"
-      block:
-        # Get the date/time facts from the control machine
-        - name: "LOG >> Get ansible date/time facts"
-          setup:
-            filter: "ansible_date_time"
-            gather_subset: "!all"
+    - name: "INCLUDE >> Perform logging preparation if 'log; is true"
+      include_tasks: "tasks/log_setup.yml"
+      when: "log"
 
-        # Store the specific ISO8601 DTG as a fact to use later
-        - name: "LOG >> Store DTG as fact"
-          set_fact:
-            DTG: "{{ ansible_date_time.iso8601_basic_short }}"
-
-        # The logs/ directory is where all device output is written
-        - name: "LOG >> Ensure output logging directory exists"
-          file:
-            path: "logs"
-            state: directory
-          changed_when: false
-
-        # Each specific playbook execution gets a log folder; define the path
-        - name: "LOG >> Store the log directory for this run"
-          set_fact:
-            LOG_PATH: "logs/natm_{{ DTG }}/"
-
-      when: "hostvars.localhost.log"
-      run_once: true
-      delegate_to: localhost
-    # Perform some preliminary error checking on the static_nats list to
-    # ensure it is defined and non-empty. Perform the same checks on the vrf
-    # string.
-    - name: "SYS >> Assert 'static_nats' var is defined"
-      assert:
-        that:
-          - "static_nats is defined"
-          - "static_nats"
-          - "vrf is defined"
-        msg: "'static_nats' and 'vrf' must be defined per host"
-
-    # Compute the VRF command string by prepending the word vrf to
-    # simplify the templates variable references.
-    - name: "SYS >> Determine VRF string"
-      set_fact:
-        VRF_STR: "{{ ' vrf {0}'.format(vrf.strip()) if vrf else '' }}"
-
-    # Print the VRF string to ensure it was assembled correctly.
-    - name: "DEBUG >> Print VRF string"
-      debug:
-        var: VRF_STR
-        verbosity: 1
-
-    # Each NAT entry must have a valid name (a non-empty string), a state
-    # value of either present or absent, and a valid IPv4 address for both
-    # the inside (private) and outside (public) addresses. Neither can be
-    # in CIDR format.
-    - name: "SYS >> Assert NAT IPs, name, and state are valid"
-      assert:
-        that:
-          - "item.name"
-          - "item.state == 'present' or item.state == 'absent'"
-          - "item.inside_private | ipv4 == item.inside_private"
-          - "item.outside_public | ipv4 == item.outside_public"
-          - "not '/' in item.inside_private"
-          - "not '/' in item.outside_public"
-        msg: |-
-          name must be a non-empty string; saw {{ item.name }}
-          state must be 'present' or 'absent'; saw {{ item.state }}
-          inside_private must be IPv4 address; saw {{ item.inside_private }}
-          outside_public must be IPv4 address; saw {{ item.outside_public }}
-      with_items: "{{ static_nats }}"
-      loop_control:
-        label: >-
-          NAT Entry {{ item.name }}:
-          {{ item.inside_private }}->{{ item.outside_public }}
-
-    # Create a list of all names and inside/outside IPs for future
-    # iteration.
-    - name: "SYS >> Create lists of IPs and names"
-      set_fact:
-        NAME_LIST: "{{ static_nats | map(attribute='name') | list }}"
-        IN_LIST: "{{ static_nats | map(attribute='inside_private') | list }}"
-        OUT_LIST: "{{ static_nats | map(attribute='outside_public') | list }}"
-
-    # Print out the list of names when -v debugging is enabled.
-    - name: "DEBUG >> Print name list"
-      debug:
-        msg: "{{ NAME_LIST }}"
-        verbosity: 1
-
-    # Print out the list of inside private IPs  when -v debugging is enabled.
-    - name: "DEBUG >> Print inside private list"
-      debug:
-        msg: "{{ IN_LIST }}"
-        verbosity: 1
-
-    # Print out the list of outside public IPs when -v debugging is enabled.
-    - name: "DEBUG >> Print outside public list"
-      debug:
-        msg: "{{ OUT_LIST }}"
-        verbosity: 1
-
-    # Ensure each list contains no duplicates as this will have drastic
-    # negative effects on the functionality of NAT in Cisco IOS.
-    - name: "SYS >> Check for duplicate IPs or names across NAT entries"
-      assert:
-        that:
-          - "NAME_LIST | length == NAME_LIST | unique | length"
-          - "IN_LIST | length == IN_LIST | unique | length"
-          - "OUT_LIST | length == OUT_LIST | unique | length"
-        msg: "Duplicate inputs exist in vars file, reconcile before continuing"
+    # Ensure inputs are correct and ready for processing
+    - name: "INCLUDE >> Perform preliminary error checking on inputs"
+      include_tasks: "tasks/pre_check.yml"
 
     # When CI testing is false (the general case), then log into the routers,
     # collect their NAT information, and make appropriate updates.
@@ -177,23 +75,7 @@
       debug:
         msg: "{{ NAT_CONFIG.updates | join('\n') }}"
 
-    - name: "BLOCK >> Log changes to disk"
-      block:
-        # Based on the LOG_PATH variable, create the per-run log directory
-        - name: "LOG >> Build logging directory with path {{ LOG_PATH }}"
-          listen: "updates exist"
-          file:
-            path: "{{ LOG_PATH }}"
-            state: directory
-          changed_when: false
-
-        # Next, the updates are templated through the 'natlog' template for
-        # longer term storage and reference for troubleshooting.
-        - name: "LOG >> Print updates written to device to log file"
-          listen: "updates exist"
-          template:
-            src: "templates/natlog.j2"
-            dest: "{{ LOG_PATH }}{{ inventory_hostname }}.txt"
-            newline_sequence: '\r\n'
-      when: "hostvars.localhost.log"
+    - name: "INCLUDE >> Write logs to disk if 'log' is true"
+      include: "tasks/log_write.yml"
+      when: "log"
 ...

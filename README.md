@@ -29,6 +29,7 @@ candidate.
 
 Testing was conducted on the following platforms and versions:
   * Cisco CSR1000v, version 16.07.01a, running in AWS
+  * Cisco CSR1000v, version 16.09.02, running in AWS
 
 Control machine information:
 ```
@@ -42,15 +43,21 @@ Linux ip-10-125-0-100.ec2.internal 3.10.0-693.el7.x86_64 #1 SMP
 $ ansible --version
 ansible 2.6.2
   config file = /home/ec2-user/natm/ansible.cfg
-  configured module search path = [u'/home/ec2-user/.ansible/plugins/modules',
-    u'/usr/share/ansible/plugins/modules']
-  ansible python module location = /usr/lib/python2.7/site-packages/ansible
-  executable location = /usr/bin/ansible
-  python version = 2.7.5 (default, May  3 2017, 07:55:04)
-    [GCC 4.8.5 20150623 (Red Hat 4.8.5-14)]
+  configured module search path =
+    ['/home/ec2-user/.ansible/plugins/modules',
+     '/usr/share/ansible/plugins/modules']
+  ansible python module location =
+    /home/ec2-user/environments/a262/lib64/python3.6/site-packages/ansible
+  executable location = /home/ec2-user/environments/a262/bin/ansible
+  python version = 3.6.7 (default, Dec  5 2018, 15:02:05)
+    [GCC 4.8.5 20150623 (Red Hat 4.8.5-36)]
 ```
 
 ## Variables
+First and most simply, the group variables covering all NAT routers
+contains the login information for `network_cli` as well as whether
+text file logging should be enabled via a Boolean `log` flag.
+
 These playbooks rely only on `host_vars` which are defined for each router
 within a given NAT line. Each NAT line must identify a unique name,
 the inside private (inside local in Cisco speak), and outside public

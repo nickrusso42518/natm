@@ -1,8 +1,9 @@
 ---
 ci_test: false
+log: true
 ansible_network_os: "ios"
 ansible_user: "ansible"
-ansible_ssh_pass: !vault |
+ansible_password: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           33646665303538616431616437396462653463313361636361366562636434326538346237333337
           6339323336616230336662346333333839396535366237330a393531626230303561373465356533

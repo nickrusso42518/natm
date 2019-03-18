@@ -1,4 +1,3 @@
 ansible==2.6.2
 netaddr
 yamllint
-pymarkdownlint
