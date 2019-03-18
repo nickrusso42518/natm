@@ -42,7 +42,7 @@
           NAT entry {{ item.inside_private }},{{ item.outside_public }}
           with name {{ item.name }} not found when state was 'present'
       when: "item.state == 'present'"
-      with_items: "{{ static_nats }}"
+      loop: "{{ static_nats }}"
       loop_control:
         label: >-
           Present? {{ item.name }}:
@@ -59,7 +59,7 @@
           NAT entry {{ item.inside_private }},{{ item.outside_public }}
           with name {{ item.name }} found when state was 'absent'
       when: "item.state == 'absent'"
-      with_items: "{{ static_nats }}"
+      loop: "{{ static_nats }}"
       loop_control:
         label: >-
           Absent? {{ item.name }}:

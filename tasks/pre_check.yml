@@ -42,7 +42,7 @@
           state must be 'present' or 'absent'; saw {{ item.state }}
           inside_private must be IPv4 address; saw {{ item.inside_private }}
           outside_public must be IPv4 address; saw {{ item.outside_public }}
-      with_items: "{{ static_nats }}"
+      loop: "{{ static_nats }}"
       loop_control:
         label: >-
           NAT Entry {{ item.name }}:
