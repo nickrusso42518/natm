@@ -5,7 +5,7 @@
   hosts: nat_routers
   tasks:
     # When 'log' is true, execute the log preparation
-    - name: "INCLUDE >> Perform logging preparation if 'log; is true"
+    - name: "INCLUDE >> Perform logging preparation if 'log' is true"
       include_tasks: "tasks/log_setup.yml"
       when: "log"
 
