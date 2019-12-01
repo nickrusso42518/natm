@@ -6,7 +6,7 @@
       listen: "updates exist"
       file:
         path: "{{ LOG_PATH }}"
-        state: directory
+        state: "directory"
       changed_when: false
 
     # Next, the updates are templated through the 'natlog' template for
@@ -18,5 +18,5 @@
         dest: "{{ LOG_PATH }}{{ inventory_hostname }}.txt"
         newline_sequence: '\r\n'
 
-  delegate_to: localhost
+  delegate_to: "localhost"
 ...

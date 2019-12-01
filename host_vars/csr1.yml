@@ -14,3 +14,4 @@ static_nats:
     state: "present"
     inside_private: "192.168.1.3"
     outside_public: "100.64.1.3"
+...

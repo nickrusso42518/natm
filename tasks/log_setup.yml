@@ -16,7 +16,7 @@
     - name: "LOG >> Ensure output logging directory exists"
       file:
         path: "logs"
-        state: directory
+        state: "directory"
       changed_when: false
 
     # Each specific playbook execution gets a log folder; define the path
@@ -25,4 +25,4 @@
         LOG_PATH: "logs/natm_{{ DTG }}/"
 
   run_once: true
-  delegate_to: localhost
+  delegate_to: "localhost"

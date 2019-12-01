@@ -4,7 +4,7 @@
 - name: "IOS >> Get current NAT statements"
   ios_command:
     commands: "show running-config | include ^ip nat name .*"
-  register: CUR_NATS
+  register: "CUR_NATS"
 
 # Print the output of the current NATs for debugging, but it will be
 # ugly and hard to read. This CUR_NATS variable is never used
@@ -23,8 +23,8 @@
   ios_config:
     src: "../templates/nat.j2"
     save_when: "{{ save_when }}"
-    match: none
-  register: NAT_CONFIG
+    match: "none"
+  register: "NAT_CONFIG"
   changed_when: "NAT_CONFIG.updates is defined"
   notify: "updates exist"
 
@@ -36,5 +36,5 @@
 - name: "IOS >> Get NAT translation table"
   ios_command:
     commands: "show ip nat translations{{ VRF_STR }}"
-  register: NAT_TABLE
+  register: "NAT_TABLE"
 ...

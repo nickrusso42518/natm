@@ -2,13 +2,12 @@
 - name: "BLOCK >> Perform logging preparation"
   block:
     # Perform some preliminary error checking on the static_nats list to
-    # ensure it is defined and non-empty. Perform the same checks on
+    # ensure it is defined and is a list. Perform similar checks on
     # the vrf string.
     - name: "SYS >> Assert 'static_nats' var is defined"
       assert:
         that:
-          - "static_nats is defined"
-          - "static_nats"
+          - "static_nats is defined and static_nats is sequence"
           - "vrf is defined"
         msg: "'static_nats' and 'vrf' must be defined per host"
 
@@ -21,7 +20,7 @@
     # Print the VRF string to ensure it was assembled correctly.
     - name: "DEBUG >> Print VRF string"
       debug:
-        var: VRF_STR
+        var: "VRF_STR"
         verbosity: 1
 
     # Each NAT entry must have a valid name (a non-empty string), a state
@@ -84,4 +83,4 @@
           - "OUT_LIST | length == OUT_LIST | unique | length"
         msg: "Duplicate inputs exist in vars file, reconcile before continuing"
 
-  delegate_to: localhost
+  delegate_to: "localhost"

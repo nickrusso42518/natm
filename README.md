@@ -30,6 +30,7 @@ candidate.
 Testing was conducted on the following platforms and versions:
   * Cisco CSR1000v, version 16.07.01a, running in AWS
   * Cisco CSR1000v, version 16.09.02, running in AWS
+  * Cisco CSR1000v, version 16.12.01a, running in AWS
 
 Control machine information:
 ```
@@ -41,15 +42,14 @@ Linux ip-10-125-0-100.ec2.internal 3.10.0-693.el7.x86_64 #1 SMP
   Thu Jul 6 19:56:57 EDT 2017 x86_64 x86_64 x86_64 GNU/Linux
 
 $ ansible --version
-ansible 2.6.2
-  config file = /home/ec2-user/natm/ansible.cfg
-  configured module search path =
-    ['/home/ec2-user/.ansible/plugins/modules',
-     '/usr/share/ansible/plugins/modules']
+ansible 2.8.7
+  config file = /home/ec2-user/racc/ansible.cfg
+  configured module search path = ['/home/ec2-user/.ansible/plugins/modules',
+    '/usr/share/ansible/plugins/modules']
   ansible python module location =
-    /home/ec2-user/environments/a262/lib64/python3.6/site-packages/ansible
-  executable location = /home/ec2-user/environments/a262/bin/ansible
-  python version = 3.6.7 (default, Dec  5 2018, 15:02:05)
+    /home/ec2-user/environments/racc287/lib/python3.7/site-packages/ansible
+  executable location = /home/ec2-user/environments/racc287/bin/ansible
+  python version = 3.7.3 (default, Aug 27 2019, 16:56:53)
     [GCC 4.8.5 20150623 (Red Hat 4.8.5-36)]
 ```
 
@@ -73,6 +73,8 @@ be self-evident. A sample `host_vars` file is shown below. The `vrf`
 option can be set to `false` (without the quotes) or a string. When
 false is used, the global table is assumed. When any non-empty string is
 used, that string is the VRF name. An empty string yields an error.
+Note that the playbook **does not** create or modify VRFs. These should
+be pre-existing VRFs, otherwise the playbook with not work correctly.
 
 For simplicity, the VRF is defined globally and applies to all NAT entries.
 If there are multiple VRFs with multiple NATs per VRF, simply create
@@ -137,7 +139,7 @@ changes occur, the task that manages the NAT configurations shows "changed"
 and thus can notify handlers. These log messages are printed to stdout
 and to a log file in the format `hostname_DTG.txt` in the `LOG_PATH`
 variable computed by the control machine earlier in the playbook.
-For example: `csrnat_20180115T183845.txt`.
+For example: `csr1_20180115T183845.txt`.
 
 The network device hostname and DTG are also written in the text of the
 log to make it easy to bookmark certain events during concatenation.
@@ -148,22 +150,22 @@ these text labels.
 [ec2-user@ansible natm]$ tree logs/
 logs/
 ├── natm_20180601T115455
-│   └── csrnat.txt
+│   └── csr1.txt
 └── natm_20180601T115632
-    └── csrnat.txt
+    └── csr1.txt
 
 [ec2-user@ansible natm]$ cat \
-> logs/natm_20180601T115455/csrnat.txt \
-> logs/natm_20180601T115632/csrnat.txt
-! BEGIN csrnat @ 20180601T115455
+> logs/natm_20180601T115455/csr1.txt \
+> logs/natm_20180601T115632/csr1.txt
+! BEGIN csr1 @ 20180601T115455
 ! Updates:
 ip nat name TEST_1 inside source static 192.168.0.1 100.64.0.1
 ip nat name TEST_3 inside source static 192.168.0.3 100.64.0.3
 !
-! END   csrnat @ 20180601T115455
-! BEGIN csrnat @ 20180601T115632
+! END   csr1 @ 20180601T115455
+! BEGIN csr1 @ 20180601T115632
 ! Updates:
 no ip nat name TEST_1
 !
-! END   csrnat @ 20180601T115632
+! END   csr1 @ 20180601T115632
 ```

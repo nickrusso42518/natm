@@ -1,8 +1,8 @@
 ---
 # This play encompasses all NAT routers and makes changes to the NAT config
 # on each device (assumine ci_test is false).
-- name: "Manage NAT configuration on nat_routers"
-  hosts: nat_routers
+- name: "Manage NAT configuration on IOS routers"
+  hosts: "ios_router"
   tasks:
     # When 'log' is true, execute the log preparation
     - name: "INCLUDE >> Perform logging preparation if 'log' is true"
