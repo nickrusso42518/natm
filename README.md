@@ -31,6 +31,7 @@ Testing was conducted on the following platforms and versions:
   * Cisco CSR1000v, version 16.07.01a, running in AWS
   * Cisco CSR1000v, version 16.09.02, running in AWS
   * Cisco CSR1000v, version 16.12.01a, running in AWS
+  * Cisco CSR1000v, version 17.3.3, running in AWS
 
 Control machine information:
 ```
