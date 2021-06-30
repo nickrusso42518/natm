@@ -4,7 +4,7 @@
 # which is expected per the standard inventory file. This data can be
 # referenced using NAT_TABLE.stdout[0] just like a "real" output variable.
 - name: "SYS >> Generate mock NAT_TABLE variable representing router output"
-  set_fact:
+  ansible.builtin.set_fact:
     NAT_TABLE:
       stdout:
         - |

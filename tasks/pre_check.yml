@@ -5,7 +5,7 @@
     # ensure it is defined and is a list. Perform similar checks on
     # the vrf string.
     - name: "SYS >> Assert 'static_nats' var is defined"
-      assert:
+      ansible.builtin.assert:
         that:
           - "static_nats is defined and static_nats is sequence"
           - "vrf is defined"
@@ -14,21 +14,15 @@
     # Compute the VRF command string by prepending the word vrf to
     # simplify the templates variable references.
     - name: "SYS >> Determine VRF string"
-      set_fact:
+      ansible.builtin.set_fact:
         VRF_STR: "{{ ' vrf {0}'.format(vrf.strip()) if vrf else '' }}"
-
-    # Print the VRF string to ensure it was assembled correctly.
-    - name: "DEBUG >> Print VRF string"
-      debug:
-        var: "VRF_STR"
-        verbosity: 1
 
     # Each NAT entry must have a valid name (a non-empty string), a state
     # value of either present or absent, and a valid IPv4 address for both
     # the inside (private) and outside (public) addresses. Neither can be
     # in CIDR format.
     - name: "SYS >> Assert NAT IPs, name, and state are valid"
-      assert:
+      ansible.builtin.assert:
         that:
           - "item.name"
           - "item.state == 'present' or item.state == 'absent'"
@@ -43,40 +37,28 @@
           outside_public must be IPv4 address; saw {{ item.outside_public }}
       loop: "{{ static_nats }}"
       loop_control:
-        label: >-
-          NAT Entry {{ item.name }}:
-          {{ item.inside_private }}->{{ item.outside_public }}
+        label: "Check? {{ item.name }}"
 
-    # Create a list of all names and inside/outside IPs for future
-    # iteration.
+    # Create a list of all names and inside/outside IPs.
     - name: "SYS >> Create lists of IPs and names"
-      set_fact:
+      ansible.builtin.set_fact:
         NAME_LIST: "{{ static_nats | map(attribute='name') | list }}"
         IN_LIST: "{{ static_nats | map(attribute='inside_private') | list }}"
         OUT_LIST: "{{ static_nats | map(attribute='outside_public') | list }}"
 
-    # Print out the list of names when -v debugging is enabled.
-    - name: "DEBUG >> Print name list"
-      debug:
-        msg: "{{ NAME_LIST }}"
-        verbosity: 1
-
-    # Print out the list of inside private IPs  when -v debugging is enabled.
-    - name: "DEBUG >> Print inside private list"
-      debug:
-        msg: "{{ IN_LIST }}"
-        verbosity: 1
-
-    # Print out the list of outside public IPs when -v debugging is enabled.
-    - name: "DEBUG >> Print outside public list"
-      debug:
-        msg: "{{ OUT_LIST }}"
+    # Print out the name, in, and out lists when -v debugging is enabled.
+    - name: "DEBUG >> Print the various lists just created"
+      ansible.builtin.debug:
+        msg:
+          - "NAME_LIST: {{ NAME_LIST }}"
+          - "IN_LIST: {{ IN_LIST }}"
+          - "OUT_LIST: {{ OUT_LIST }}"
         verbosity: 1
 
     # Ensure each list contains no duplicates as this will have drastic
     # negative effects on the functionality of NAT in Cisco IOS.
     - name: "SYS >> Check for duplicate IPs or names across NAT entries"
-      assert:
+      ansible.builtin.assert:
         that:
           - "NAME_LIST | length == NAME_LIST | unique | length"
           - "IN_LIST | length == IN_LIST | unique | length"
@@ -84,3 +66,4 @@
         msg: "Duplicate inputs exist in vars file, reconcile before continuing"
 
   delegate_to: "localhost"
+...

@@ -2,7 +2,7 @@
 # Ask the router what NAT statements are already configured and store them
 # in a list of current NATs.
 - name: "IOS >> Get current NAT statements"
-  ios_command:
+  cisco.ios.ios_command:
     commands: "show running-config | include ^ip nat name .*"
   register: "CUR_NATS"
 
@@ -10,7 +10,7 @@
 # ugly and hard to read. This CUR_NATS variable is never used
 # outside of this task file.
 - name: "DEBUG >> Print current NAT statements"
-  debug:
+  ansible.builtin.debug:
     msg: "{{ CUR_NATS.stdout[0] }}"
     verbosity: 1
 
@@ -19,9 +19,9 @@
 # or host level and determines how the configuration is saved, if at all.
 #
 # Notify the "updates exist" handlers when changes occur.
-- name: "IOS >> Manage state NAT statements (save_when: {{ save_when }})"
-  ios_config:
-    src: "../templates/nat.j2"
+- name: "IOS >> Manage static NAT statements"
+  cisco.ios.ios_config:
+    src: "../templates/manage_nat.j2"
     save_when: "{{ save_when }}"
     match: "none"
   register: "NAT_CONFIG"
@@ -34,7 +34,7 @@
 # This NAT_TABLE variable is used extensively in the main playbook for
 # validation checking.
 - name: "IOS >> Get NAT translation table"
-  ios_command:
+  cisco.ios.ios_command:
     commands: "show ip nat translations{{ VRF_STR }}"
   register: "NAT_TABLE"
 ...

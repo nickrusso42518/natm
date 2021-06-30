@@ -1,6 +1,6 @@
 [![Build Status](
-https://travis-ci.org/nickrusso42518/natm.svg?branch=master)](
-https://travis-ci.org/nickrusso42518/natm)
+https://travis-ci.com/nickrusso42518/natm.svg?branch=master)](
+https://travis-ci.com/nickrusso42518/natm)
 
 [![published](
 http://cs.co/codeex-badge)](
@@ -17,12 +17,12 @@ Non-VRF (global table) operations are also supported.
 > Email:    njrusmc@gmail.com\
 > Twitter:  @nickrusso42518
 
-  * [Supported platforms](#supported-platforms)
+  * [Supported Platforms](#supported-platforms)
   * [Variables](#variables)
   * [Templates](#templates)
   * [Handlers](#handlers)
 
-## Supported platforms
+## Supported Platforms
 Cisco IOS routers are supported today. Any router that is running NAT and
 could benefit by having automated management of the NAT statements is a good
 candidate.
@@ -42,14 +42,14 @@ Linux ip-10-125-0-100.ec2.internal 3.10.0-693.el7.x86_64 #1 SMP
   Thu Jul 6 19:56:57 EDT 2017 x86_64 x86_64 x86_64 GNU/Linux
 
 $ ansible --version
-ansible 2.8.7
-  config file = /home/ec2-user/racc/ansible.cfg
-  configured module search path = ['/home/ec2-user/.ansible/plugins/modules',
+ansible 2.10.11
+  config file = /home/centos/code/natm/ansible.cfg
+  configured module search path = ['/home/centos/.ansible/plugins/modules',
     '/usr/share/ansible/plugins/modules']
   ansible python module location =
-    /home/ec2-user/environments/racc287/lib/python3.7/site-packages/ansible
-  executable location = /home/ec2-user/environments/racc287/bin/ansible
-  python version = 3.7.3 (default, Aug 27 2019, 16:56:53)
+    /home/centos/environments/ans3/lib/python3.7/site-packages/ansible
+  executable location = /home/centos/environments/ans3/bin/ansible
+  python version = 3.7.3 (default, Apr 28 2019, 11:01:35)
     [GCC 4.8.5 20150623 (Red Hat 4.8.5-36)]
 ```
 
@@ -90,9 +90,7 @@ data for local testing only (`true`). Mock data files can be found in
 
 ```
 ---
-vrf: "TEST"
-ci_test: false
-vrf: false
+vrf: "TEST"  # or false to signify global NAT
 static_nats:
   - name: "TEST_1"
     state: "present"
@@ -114,9 +112,9 @@ The Jinja2 templates are heavily commented for readability and are used to
 develop host specific configurations based on the previously defined variables.
  __The templates should not be changed at the operator level.__
 
-One locally-scoped variable is used in the `nat.j2` template. `nat_cmd_prefix`
-contains the `ip nat name (name)` string which simplifies addition and removal.
-Ultimately, this keeps the template clean and readable.
+One locally-scoped variable is used in the `manage_nat.j2` template.
+`nat_cmd_prefix` contains the `ip nat name (name)` string which simplifies
+addition and removal.  Ultimately, this keeps the template clean and readable.
 
 The template contains a loop which iterates over the `static_nats` list. One
 of two actions will occur:
@@ -137,9 +135,10 @@ A second template is for logging. Since this playbook is idempotent, logging
 changes is useful to identify what changed, when, and on which device. When
 changes occur, the task that manages the NAT configurations shows "changed"
 and thus can notify handlers. These log messages are printed to stdout
-and to a log file in the format `hostname_DTG.txt` in the `LOG_PATH`
-variable computed by the control machine earlier in the playbook.
-For example: `csr1_20180115T183845.txt`.
+and to a log file in the format `<hostname>.txt`. The `LOG_PATH`
+variable computed by the control machine earlier in the playbook
+will contain a datetime group (DTG) in the directory name. For example:
+`natm_20180115T183845/csr1.txt`.
 
 The network device hostname and DTG are also written in the text of the
 log to make it easy to bookmark certain events during concatenation.
@@ -147,25 +146,25 @@ The output below illustrates the use of `cat` and the value of
 these text labels.
 
 ```
-[ec2-user@ansible natm]$ tree logs/
+$ tree --charset=ascii logs/
 logs/
-├── natm_20180601T115455
-│   └── csr1.txt
-└── natm_20180601T115632
-    └── csr1.txt
+|-- natm_20210630T125235
+|   |-- csr1.txt
+|   `-- csr2.txt
+`-- natm_20210630T125423
+    `-- csr2.txt
 
-[ec2-user@ansible natm]$ cat \
-> logs/natm_20180601T115455/csr1.txt \
-> logs/natm_20180601T115632/csr1.txt
-! BEGIN csr1 @ 20180601T115455
-! Updates:
-ip nat name TEST_1 inside source static 192.168.0.1 100.64.0.1
-ip nat name TEST_3 inside source static 192.168.0.3 100.64.0.3
-!
-! END   csr1 @ 20180601T115455
-! BEGIN csr1 @ 20180601T115632
-! Updates:
+$ find logs/ -name "*.txt" | sort | xargs cat
+! BEGIN csr1 @ 20210630T125235
 no ip nat name TEST_1
-!
-! END   csr1 @ 20180601T115632
+ip nat name TEST_2 inside source static 192.168.1.2 100.64.1.2
+! END   csr1 @ 20210630T125235
+! BEGIN csr2 @ 20210630T125235
+no ip nat name TEST_1
+ip nat name TEST_2 inside source static 192.168.2.2 100.64.2.2 vrf CUST_A
+! END   csr2 @ 20210630T125235
+! BEGIN csr2 @ 20210630T125423
+ip nat name TEST_1 inside source static 192.168.2.1 100.64.2.1 vrf CUST_A
+no ip nat name TEST_2
+! END   csr2 @ 20210630T125423
 ```

@@ -3,26 +3,28 @@
   block:
     # Get the date/time facts from the control machine
     - name: "LOG >> Get ansible date/time facts"
-      setup:
+      ansible.builtin.setup:
         filter: "ansible_date_time"
         gather_subset: "!all"
 
     # Store the specific ISO8601 DTG as a fact to use later
     - name: "LOG >> Store DTG as fact"
-      set_fact:
+      ansible.builtin.set_fact:
         DTG: "{{ ansible_date_time.iso8601_basic_short }}"
 
     # The logs/ directory is where all device output is written
     - name: "LOG >> Ensure output logging directory exists"
-      file:
+      ansible.builtin.file:
         path: "logs"
         state: "directory"
+        mode: "0775"
       changed_when: false
 
     # Each specific playbook execution gets a log folder; define the path
     - name: "LOG >> Store the log directory for this run"
-      set_fact:
+      ansible.builtin.set_fact:
         LOG_PATH: "logs/natm_{{ DTG }}/"
 
   run_once: true
   delegate_to: "localhost"
+...

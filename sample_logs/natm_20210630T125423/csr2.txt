@@ -1,0 +1,6 @@
+! BEGIN csr2 @ 20210630T125423
+! Updates:
+ip nat name TEST_1 inside source static 192.168.2.1 100.64.2.1 vrf CUST_A
+no ip nat name TEST_2
+!
+! END   csr2 @ 20210630T125423

@@ -2,80 +2,91 @@
 # This play encompasses all NAT routers and makes changes to the NAT config
 # on each device (assumine ci_test is false).
 - name: "Manage NAT configuration on IOS routers"
-  hosts: "ios_router"
+  hosts: "cisco_ios"
   tasks:
     # When 'log' is true, execute the log preparation
     - name: "INCLUDE >> Perform logging preparation if 'log' is true"
-      include_tasks: "tasks/log_setup.yml"
+      ansible.builtin.include_tasks: "tasks/log_setup.yml"
       when: "log"
 
     # Ensure inputs are correct and ready for processing
     - name: "INCLUDE >> Perform preliminary error checking on inputs"
-      include_tasks: "tasks/pre_check.yml"
+      ansible.builtin.include_tasks: "tasks/pre_check.yml"
 
     # When CI testing is false (the general case), then log into the routers,
     # collect their NAT information, and make appropriate updates.
     - name: "INCLUDE >> Manage NAT statements on router"
-      include_tasks: "tasks/manage_nat.yml"
+      ansible.builtin.include_tasks: "tasks/manage_nat.yml"
       when: "not ci_test"
 
     # When CI testing is true, mock up a NAT table for checking later in the
     # playbook based on what is specified in the group/host variables file.
     - name: "INCLUDE >> Generate mock data for CI testing"
-      include_tasks: "tasks/mock_{{ inventory_hostname }}.yml"
+      ansible.builtin.include_tasks: "tasks/mock_{{ inventory_hostname }}.yml"
       when: "ci_test"
 
     # Print the table to stdout in raw format for troubleshooting
     - name: "DEBUG >> Print NAT translation table"
-      debug:
+      ansible.builtin.debug:
         msg: "{{ NAT_TABLE.stdout[0] }}"
         verbosity: 1
 
     # Entries that are supposed to be present, per the state selector,
     # must be present at this point. If they are not, the task fails.
     - name: "SYS >> Verify present entries are present"
-      assert:
+      ansible.builtin.assert:
         that:
           - "item.inside_private in NAT_TABLE.stdout[0]"
           - "item.outside_public in NAT_TABLE.stdout[0]"
-        msg: |-
-          NAT entry {{ item.inside_private }},{{ item.outside_public }}
-          with name {{ item.name }} not found when state was 'present'
+        msg: "NAT entry not found when state was present"
       when: "item.state == 'present'"
       loop: "{{ static_nats }}"
       loop_control:
-        label: >-
-          Present? {{ item.name }}:
-          {{ item.inside_private }}->{{ item.outside_public }}
+        label: "Present? {{ item.name }}"
 
     # Entries that are supposed to be absent, per the state selector,
     # must be absent at this point. If they are not, the task fails.
     - name: "SYS >> Verify absent entries are absent"
-      assert:
+      ansible.builtin.assert:
         that:
           - "not item.inside_private in NAT_TABLE.stdout[0]"
           - "not item.outside_public in NAT_TABLE.stdout[0]"
-        msg: |-
-          NAT entry {{ item.inside_private }},{{ item.outside_public }}
-          with name {{ item.name }} found when state was 'absent'
+        msg: "NAT entry found when state was absent"
       when: "item.state == 'absent'"
       loop: "{{ static_nats }}"
       loop_control:
-        label: >-
-          Absent? {{ item.name }}:
-          {{ item.inside_private }}->{{ item.outside_public }}
+        label: "Absent? {{ item.name }}"
 
   # If these handlers are invoked, it means that changes to the state
   # table occurred, and these changes should be appropriately logged.
   handlers:
-    # The updates will be assembled into one text blob using newlines
-    # and written to the screen for interested users.
-    - name: "LOG >> Print updates written to device to stdout"
-      listen: "updates exist"
-      debug:
-        msg: "{{ NAT_CONFIG.updates | join('\n') }}"
+    - name: "BLOCK >> Log changes when updates exist"
+      block:
 
-    - name: "INCLUDE >> Write logs to disk if 'log' is true"
-      include: "tasks/log_write.yml"
-      when: "log"
+        # The updates will be assembled into one text blob using newlines
+        # and written to the screen for interested users.
+        - name: "LOG >> Print updates written to device to stdout"
+          listen: "updates exist"
+          ansible.builtin.debug:
+            var: "NAT_CONFIG.updates"
+
+        # Based on the LOG_PATH variable, create the per-run log directory
+        - name: "LOG >> Build logging directory"
+          listen: "updates exist"
+          ansible.builtin.file:
+            path: "{{ LOG_PATH }}"
+            state: "directory"
+            mode: "0775"
+          changed_when: false
+
+        # Next, the updates are templated through the 'natlog' template for
+        # longer term storage and reference for troubleshooting.
+        - name: "LOG >> Print updates written to device to log file"
+          listen: "updates exist"
+          ansible.builtin.template:
+            src: "templates/log_nat.j2"
+            dest: "{{ LOG_PATH }}{{ inventory_hostname }}.txt"
+            mode: "0444"
+
+      delegate_to: "localhost"
 ...
